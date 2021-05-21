@@ -41,7 +41,7 @@ def get_data(data_list, feat_idx, n_examples):
 
     data_y = np.array([])
     for data in data_list:
-        data = np.load(data).item()
+        data = np.load(data, allow_pickle=True).item()
         # NOTE: order of the features are changed!
         data_b = format_data_wports(data['x'], n_examples)
         data_x = np.concatenate((data_x, data_b))
@@ -52,7 +52,7 @@ def get_data_list(data_list, feat_idx, n_examples):
     data_x = []
     data_y = []
     for data in data_list:
-        data = np.load(data).item()
+        data = np.load(data, allow_pickle=True).item()
         # NOTE: order of the features are changed!
         data_b = format_data_wports(data['x'], n_examples)
         data_x.append(data_b)
@@ -66,7 +66,7 @@ def data_to_string(data):
     return ip + proto + ports
 
 def get_data_str_with_ports(data):
-    data = np.load(data).item()
+    data = np.load(data, allow_pickle=True).item()
     data_x = data['x']
     data_y = data['y']
 
