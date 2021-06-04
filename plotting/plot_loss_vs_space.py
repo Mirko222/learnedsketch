@@ -27,6 +27,7 @@ if __name__ == '__main__':
     argparser.add_argument("--y_lim", type=float, nargs='*', default=[])
     argparser.add_argument("--title", type=str, default='')
     argparser.add_argument("--algo", type=str, default='Alg')
+    argparser.add_argument("--save", type=str, default='plot.png')
     args = argparser.parse_args()
 
     if args.learned_cmin:
@@ -82,4 +83,4 @@ if __name__ == '__main__':
     ax.set_title(title)
     plt.legend(loc="upper right")
     plt.show()
-
+    plt.savefig(args.save)
