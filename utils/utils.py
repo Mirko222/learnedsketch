@@ -8,7 +8,7 @@ from collections import deque
 
 def git_log():
     return subprocess.check_output(['git', 'log', '-n', '1']).decode('utf-8')
-
+    
 def get_stat(data_name, data_x, data_y):
     s = 'statistics for %s\n' % data_name
     s += 'data #: %d, shape %s\n' % (len(data_x), str(np.asarray(data_x).shape))

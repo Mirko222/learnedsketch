@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def compute_avg_loss(counts, y, y_buckets):
     """ Compute the loss of a sketch.
     Args:
@@ -64,7 +63,7 @@ def count_min(y, n_buckets, n_hash):
         loss += np.abs(y[i] - y_est) * y[i]
     return loss / np.sum(y)
 
-def cutoff_countmin(y, n_buckets, b_cutoff, n_hashes):
+def cutoff_countmin(y, n_buckets, b_cutoff, n_hashes, cutoff_cost_mul):
     """ Learned Count-Min
     Args:
         y: true counts of each item (sorted, largest first), float - [num_items]
@@ -94,10 +93,10 @@ def cutoff_countmin(y, n_buckets, b_cutoff, n_hashes):
     loss_avg = (loss_cf * np.sum(y[:b_cutoff]) + loss_cm * np.sum(y[b_cutoff:])) / np.sum(y)
     print('\tloss_cf %.2f\tloss_rd %.2f\tloss_avg %.2f' % (loss_cf, loss_cm, loss_avg))
 
-    space = b_cutoff * 4 * 2 + (n_buckets - b_cutoff) * n_hashes * 4
+    space = b_cutoff * 4 * cutoff_cost_mul + (n_buckets - b_cutoff) * n_hashes * 4
     return loss_avg, space
 
-def cutoff_countmin_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes):
+def cutoff_countmin_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes, cutoff_cost_mul):
     """ Learned Count-Min (use predicted scores to identify heavy hitters)
     Args:
         y: true counts of each item (sorted, largest first), float - [num_items]
@@ -123,10 +122,10 @@ def cutoff_countmin_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes):
     loss_avg = (loss_cf * np.sum(y_ccm) + loss_cm * np.sum(y_cm)) / np.sum(y)
     print('\tloss_cf %.2f\tloss_rd %.2f\tloss_avg %.2f' % (loss_cf, loss_cm, loss_avg))
 
-    space = len(y_ccm) * 4 * 2 + n_cm_buckets * n_hashes * 4
+    space = len(y_ccm) * 4 * cutoff_cost_mul + n_cm_buckets * n_hashes * 4
     return loss_avg, space
 
-def cutoff_lookup(x, y, n_cm_buckets, n_hashes, d_lookup, y_cutoff, sketch='CountMin'):
+def cutoff_lookup(x, y, n_cm_buckets, n_hashes, d_lookup, y_cutoff, cutoff_cost_mul, sketch='CountMin'):
     """ Learned Count-Min (use predicted scores to identify heavy hitters)
     Args:
         x: feature of each item - [num_items]
@@ -168,7 +167,7 @@ def cutoff_lookup(x, y, n_cm_buckets, n_hashes, d_lookup, y_cutoff, sketch='Coun
     print('\tloss_cf %.2f\tloss_rd %.2f\tloss_avg %.2f' % (loss_cf, loss_cm, loss_avg))
     print('\t# uniq', len(y_ccm), '# cm', len(y_cm))
 
-    space = len(y_ccm) * 4 * 2 + n_cm_buckets * n_hashes * 4
+    space = len(y_ccm) * 4 * cutoff_cost_mul + n_cm_buckets * n_hashes * 4
     return loss_avg, space
 
 def random_hash_with_sign(y, n_buckets):
@@ -251,7 +250,7 @@ def cutoff_countsketch(y, n_buckets, b_cutoff, n_hashes):
     space = b_cutoff * 4 * 2 + (n_buckets - b_cutoff) * n_hashes * 4
     return loss_avg, space
 
-def cutoff_countsketch_wscore(y, scores, score_cutoff, n_cs_buckets, n_hashes):
+def cutoff_countsketch_wscore(y, scores, score_cutoff, n_cs_buckets, n_hashes, cutoff_cost_mul):
     """ Learned Count-Sketch (use predicted scores to identify heavy hitters)
     Args:
         y: true counts of each item (sorted, largest first), float - [num_items]
@@ -277,7 +276,7 @@ def cutoff_countsketch_wscore(y, scores, score_cutoff, n_cs_buckets, n_hashes):
     loss_avg = (loss_cf * np.sum(y_ccs) + loss_cs * np.sum(y_cs)) / np.sum(y)
     print('\tloss_cf %.2f\tloss_rd %.2f\tloss_avg %.2f' % (loss_cf, loss_cs, loss_avg))
 
-    space = len(y_ccs) * 4 * 2 + n_cs_buckets * n_hashes * 4
+    space = len(y_ccs) * 4 * cutoff_cost_mul + n_cs_buckets * n_hashes * 4
     return loss_avg, space
 
 def order_y_wkey(y, results, key, n_examples=0):

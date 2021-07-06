@@ -12,32 +12,32 @@ from sketch import cutoff_countmin, cutoff_lookup, cutoff_countmin_wscore, order
 from sketch import cutoff_countsketch, cutoff_countsketch_wscore
 
 
-def run_ccm(y, b_cutoff, n_hashes, n_buckets, name, sketch_type):
+def run_ccm(y, b_cutoff, n_hashes, n_buckets, name, sketch_type, cutoff_cost_mul):
     start_t = time.time()
     if sketch_type == 'count_min':
-        loss, space = cutoff_countmin(y, n_buckets, b_cutoff, n_hashes)
+        loss, space = cutoff_countmin(y, n_buckets, b_cutoff, n_hashes, cutoff_cost_mul)
     else:
-        loss, space = cutoff_countsketch(y, n_buckets, b_cutoff, n_hashes)
+        loss, space = cutoff_countsketch(y, n_buckets, b_cutoff, n_hashes, cutoff_cost_mul)
     print('%s: bcut: %d, # hashes %d, # buckets %d - loss %.2f\t time: %.2f sec' % \
         (name, b_cutoff, n_hashes, n_buckets, loss, time.time() - start_t))
     return loss, space
 
-def run_ccm_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes, name, sketch_type):
+def run_ccm_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes, name, sketch_type, cutoff_cost_mul):
     start_t = time.time()
     if sketch_type == 'count_min':
-        loss, space = cutoff_countmin_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes)
+        loss, space = cutoff_countmin_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes, cutoff_cost_mul)
     else:
-        loss, space = cutoff_countsketch_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes)
+        loss, space = cutoff_countsketch_wscore(y, scores, score_cutoff, n_cm_buckets, n_hashes, cutoff_cost_mul)
     print('%s: scut: %.3f, # hashes %d, # cm buckets %d - loss %.2f\t time: %.2f sec' % \
         (name, score_cutoff, n_hashes, n_cm_buckets, loss, time.time() - start_t))
     return loss, space
 
-def run_ccm_lookup(x, y, n_hashes, n_cm_buckets, d_lookup, s_cutoff, name, sketch_type):
+def run_ccm_lookup(x, y, n_hashes, n_cm_buckets, d_lookup, s_cutoff, name, sketch_type, cutoff_cost_mul):
     start_t = time.time()
     if sketch_type == 'count_min':
-        loss, space = cutoff_lookup(x, y, n_cm_buckets, n_hashes, d_lookup, s_cutoff)
+        loss, space = cutoff_lookup(x, y, n_cm_buckets, n_hashes, d_lookup, s_cutoff, cutoff_cost_mul)
     else:
-        loss, space = cutoff_lookup(x, y, n_cm_buckets, n_hashes, d_lookup, s_cutoff, \
+        loss, space = cutoff_lookup(x, y, n_cm_buckets, n_hashes, d_lookup, s_cutoff, cutoff_cost_mul, \
             sketch='CountSketch')
     print('%s: s_cut: %d, # hashes %d, # cm buckets %d - loss %.2f\t time: %.2f sec' % \
         (name, s_cutoff, n_hashes, n_cm_buckets, loss, time.time() - start_t))
@@ -79,6 +79,7 @@ if __name__ == '__main__':
     argparser.add_argument("--n_workers", type=int, help="number of workers", default=10)
     argparser.add_argument("--aol_data", action='store_true', default=False)
     argparser.add_argument("--count_sketch", action='store_true', default=False)
+    argparser.add_argument("--cutoff_cost_mul", type=float, help="how many times single buckets are heavier than normal ones", default=2.0)   
     args = argparser.parse_args()
 
     assert not (args.perfect_order and args.lookup_data),   "use either --perfect or --lookup"
@@ -134,11 +135,12 @@ if __name__ == '__main__':
     if args.perfect_order:
         assert np.abs(1 - len(y_valid) / len(y_test)) < 0.1,   "valid and test data should have similar # items"
 
-    cutoff_cost_mul = 2 # cutoff buckets cost x2
+    cutoff_cost_mul = args.cutoff_cost_mul # cutoff buckets cost x2
     bcut_all = []
     scut_all = []
     nh_all = []
     nb_all = []
+ 
     for space in args.space_list:
         max_bcut = space * 1e6 / (4 * cutoff_cost_mul)
         b_cutoffs = np.linspace(0.1, 0.9, 9) * max_bcut
@@ -173,11 +175,11 @@ if __name__ == '__main__':
     pool = Pool(args.n_workers)
     if args.perfect_order:
         y_sorted = np.sort(y_valid)[::-1]
-        results = pool.starmap(run_ccm, zip(repeat(y_sorted), bcut_all, nh_all, nb_all, repeat(name), repeat(sketch_type)))
+        results = pool.starmap(run_ccm, zip(repeat(y_sorted), bcut_all, nh_all, nb_all, repeat(name), repeat(sketch_type), repeat(cutoff_cost_mul)))
     elif args.lookup_data:
-        results = pool.starmap(run_ccm_lookup, zip(repeat(x_valid), repeat(y_valid), nh_all, n_cm_all, repeat(lookup_dict), scut_all, repeat(name), repeat(sketch_type)))
+        results = pool.starmap(run_ccm_lookup, zip(repeat(x_valid), repeat(y_valid), nh_all, n_cm_all, repeat(lookup_dict), scut_all, repeat(name), repeat(sketch_type), repeat(cutoff_cost_mul)))
     else:
-        results = pool.starmap(run_ccm, zip(repeat(y_valid_ordered), bcut_all, nh_all, nb_all, repeat(name), repeat(sketch_type)))
+        results = pool.starmap(run_ccm, zip(repeat(y_valid_ordered), bcut_all, nh_all, nb_all, repeat(name), repeat(sketch_type), repeat(cutoff_cost_mul)))
     pool.close()
     pool.join()
     valid_results, space_actual = zip(*results)
@@ -226,13 +228,13 @@ if __name__ == '__main__':
     if args.perfect_order:
         # version 2
         y_sorted = np.sort(y_test)[::-1]
-        results = pool.starmap(run_ccm, zip(repeat(y_sorted), best_bcuts, best_n_hashes, best_n_buckets, repeat(name), repeat(sketch_type)))
+        results = pool.starmap(run_ccm, zip(repeat(y_sorted), best_bcuts, best_n_hashes, best_n_buckets, repeat(name), repeat(sketch_type), repeat(cutoff_cost_mul)))
     elif args.lookup_data:
         results = pool.starmap(run_ccm_lookup,
-            zip(repeat(x_test), repeat(y_test), best_n_hashes, best_n_buckets - best_bcuts, repeat(lookup_dict), best_scuts, repeat(name), repeat(sketch_type)))
+            zip(repeat(x_test), repeat(y_test), best_n_hashes, best_n_buckets - best_bcuts, repeat(lookup_dict), best_scuts, repeat(name), repeat(sketch_type), repeat(cutoff_cost_mul)))
     else:
         results = pool.starmap(run_ccm_wscore,
-            zip(repeat(y_test_ordered), repeat(test_scores), best_scuts, best_n_buckets - best_bcuts, best_n_hashes, repeat(name), repeat(sketch_type)))
+            zip(repeat(y_test_ordered), repeat(test_scores), best_scuts, best_n_buckets - best_bcuts, best_n_hashes, repeat(name), repeat(sketch_type), repeat(cutoff_cost_mul)))
     pool.close()
     pool.join()
 
