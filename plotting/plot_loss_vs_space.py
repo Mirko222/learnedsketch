@@ -30,7 +30,7 @@ if __name__ == '__main__':
     argparser.add_argument("--save", type=str, default='plot.png')
     argparser.add_argument("--figwidth", type=float, default='6.4')
     argparser.add_argument("--figheight", type=float, default='4.8')
-    argparser.add_argument("--dpi", type=int, default='80')
+    argparser.add_argument("--dpi", type=int, default='100')
     args = argparser.parse_args()
 
     if args.learned_cmin:
